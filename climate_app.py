@@ -66,22 +66,34 @@ def precipitation():
     prcp_query= session.query(Measurement.date, Measurement.prcp).\
         filter(Measurement.date >='2016-08-23', Measurement.date <='2017-08-23').all()
 
-    # Create a dictionary from the row data and append to a list of all_passengers
-    precipitation_dict = dict(prcp_query)
+    # # Create a dictionary from the row data and append to a list of all_passengers
+    # precipitation_dict = dict(prcp_query)
 
-    return jsonify(precipitation_dict)
+    all_data = []
+    for date,prcp in prcp_query:
+       data_dict = {}
+       data_dict["date"] = date
+       data_dict["prcp"] = prcp
+       all_data.append(data_dict)
+
+    return jsonify(all_data)
 
 @app.route("/api/stations")
 def stations():
     """Return a JSON list of stations from the dataset"""
     # Query most active stations
-    active_stations = session.query(Measurement.station, func.count(Measurement.date).label('count')).\
-        group_by(Measurement.station).order_by(func.count(Measurement.date).desc()).all()
+    active_stations = session.query(Station.station, Station.name)
+    # #Convert list of tuples to list
+    # active_stations_List = [i[0] for i in active_stations]
+    station_data = []
+    for station, name in active_stations:
+       station_dict = {}
+       station_dict["station id"] = station
+       station_dict["name"] = name
+       station_data.append(station_dict)
 
-    #Convert list of tuples to list
-    active_stations_List = [i[0] for i in active_stations]
+    return jsonify(station_data)
     
-    return jsonify(active_stations_List)
 
 @app.route("/api/temperature")
 def tobs():
@@ -92,21 +104,33 @@ def tobs():
 
     tobs_query= session.query(Measurement.date, Measurement.tobs).\
         filter (Measurement.date >=initial_date).all()
+    
+    tobs_data = []
+    for date, tobs in tobs_query:
+       tobs_dict = {}
+       tobs_dict["Date"] = date
+       tobs_dict["Temperature"] = tobs
+       tobs_data.append(tobs_dict)
 
-    return jsonify(tobs_query)
-
+    return jsonify(tobs_data)
 
 @app.route("/api/<start>")
 def start_date(start):
     tobs_start = [func.max(Measurement.tobs),
                 func.min(Measurement.tobs),
                 func.avg(Measurement.tobs)]
-    temps_start_query = session.query(*tobs_start).\
+    results = session.query(*tobs_start).\
         filter (Measurement.date >= start).all()
 
-    #Flaten JASON Array
-    temp_data = list(np.ravel (temps_start_query))
-    return jsonify(temp_data)
+    start_temp_data = []
+    for Tmax, Tmin, Tavg in results:
+        start_dict = {}
+        start_dict["Tmax"] = Tmax
+        start_dict["Tmin"] = Tmin
+        start_dict["Tavg"] = Tavg
+        start_temp_data.append(start_dict)
+
+    return jsonify(start_temp_data)
     
 @app.route("/api/<start>/<end>")
 def start_end_date(start, end):
@@ -115,10 +139,17 @@ def start_end_date(start, end):
                 func.avg(Measurement.tobs)]
     temps_start_end = session.query(*tobs_start_end).\
         filter (Measurement.date >= start, Measurement.date <= end).all()
+    
+    start_end_temp_data = []
+    for Tmax, Tmin, Tavg in temps_start_end:
+        start_end_dict = {}
+        start_end_dict["Tmax"] = Tmax
+        start_end_dict["Tmin"] = Tmin
+        start_end_dict["Tavg"] = Tavg
+        start_end_temp_data.append(start_end_dict)
 
-    #Flaten JASON Array
-    temp_data_all = list(np.ravel (temps_start_end))
-    return jsonify(temp_data_all)
+    return jsonify(start_end_temp_data)
+
 
 if __name__ == '__main__':
     app.run(debug=True)
